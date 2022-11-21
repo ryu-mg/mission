@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  mission:
+    container_name: mission_service
+    image: mission
+    # build: 이미지가 빌드 될 때 사용할 Dockerfile을 지정
+    build:
+      # context: dockerfile의 위치 지정. default: ./(현재위치)
+      context: .
+      # dockerfile: dockerfile명을 지정. default: Dockerfile
+      dockerfile: Dockerfile
+    ports:
+      - 8088:8088
+    # volumes: 디렉토리 연동 <- ?
+    volumes:
+      - .:/root/mission
+    # Dockerfile의 CMD. 만약 같이 사용한다면 docker-compose의 command가 실행
+    command: python manage.py runserver 0.0.0.0:8088
+    # container에 대한 재시작 정책: unless-stopped(명시적으로 중지되거나, docker 자체가 중지되는 경우)
+    restart: unless-stopped
+
+  redis:
+      container_name: redis_service
+      image: redis:5.0-alpine
+      ports:
+        - 6379:6379
+      restart: unless-stopped
+
+  worker:
+    container_name: celry_service
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: celery -A mission worker --loglevel=info
+    depends_on:
+      - redis
+      - mission
+    volumes:
+    - .:/root/mission
+
+# depend_on
+# - docker compose 내의 이미지가 2개 이상인 경우 실행 의존성을 줄일 수 있음
+# - A가 먼저 실행된 다음 B가 실행되어야 하는 경우, depend_on 설정
